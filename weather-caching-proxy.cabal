@@ -26,6 +26,8 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Lib.Config
+      Lib.WeatherAPI
   other-modules:
       Paths_weather_caching_proxy
   autogen-modules:
