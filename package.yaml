@@ -21,6 +21,17 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- servant
+- servant-server
+- servant-client
+- http-client
+- wai
+- warp
+- http-client-tls
+- dotenv
+- aeson
+- text
+- bytestring
 
 ghc-options:
 - -Wall
