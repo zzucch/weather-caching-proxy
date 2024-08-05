@@ -4,6 +4,7 @@
 module Lib.WeatherDB
   ( addWeatherData,
     findWeatherData,
+    WeatherData(..),
   )
 where
 
@@ -15,8 +16,8 @@ import Database.Redis (Connection, Reply, Status, get, runRedis, set)
 import GHC.Generics (Generic)
 
 data WeatherData = WeatherData
-  { longitude :: Double,
-    latitude :: Double,
+  { latitude :: Double,
+    longitude :: Double,
     timestamp :: Int,
     temperature :: Double,
     apparent_temperature :: Double,
@@ -41,12 +42,12 @@ instance FromJSON WeatherData
 instance ToJSON WeatherData
 
 weatherDataKey :: Double -> Double -> Int -> ByteString
-weatherDataKey lon lat time =
+weatherDataKey lat lon time =
   pack $
     "weather:"
-      ++ show lon
-      ++ ":"
       ++ show lat
+      ++ ":"
+      ++ show lon
       ++ ":"
       ++ show time
 
@@ -54,8 +55,8 @@ addWeatherData :: Connection -> WeatherData -> IO (Either Reply Status)
 addWeatherData connection weather = runRedis connection $ do
   let key =
         weatherDataKey
-          (longitude weather)
           (latitude weather)
+          (longitude weather)
           (timestamp weather)
       value = toStrict $ encode weather
   set key value
@@ -66,8 +67,8 @@ findWeatherData ::
   Double ->
   Int ->
   IO (Maybe WeatherData)
-findWeatherData connection lon lat time = runRedis connection $ do
-  let key = weatherDataKey lon lat time
+findWeatherData connection lat lon time = runRedis connection $ do
+  let key = weatherDataKey lat lon time
   res <- get key
   return $ case res of
     Right (Just val) -> decode $ fromStrict val

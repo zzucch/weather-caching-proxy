@@ -4,8 +4,11 @@ module Lib
 where
 
 import Configuration.Dotenv (defaultConfig, loadFile)
+import Database.Redis (connect, defaultConnectInfo)
 import Lib.Config (getApiKey)
 import Lib.WeatherAPI (WeatherResponse (current), getWeatherData)
+import Lib.WeatherConverter
+import Lib.WeatherDB
 import Network.HTTP.Client (Manager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant.Client
@@ -31,17 +34,38 @@ runServer = do
   manager <- newTlsManager
   loadFile defaultConfig
 
-  let latitude = 39.099724
-  let longitude = -94.578331
+  let lat = 28.6448
+  let lon = 77.216721
   apiKey <- getApiKey
 
   clientEnv <- createClientEnv manager
 
   res <-
     runClientM
-      (getWeatherData latitude longitude apiKey)
+      (getWeatherData lat lon apiKey)
       clientEnv
 
-  case res of
-    Left err -> putStrLn $ "Error: " ++ show err
-    Right weatherResponse -> print $ current weatherResponse
+  either handleError handleSuccess res
+
+handleError :: (Show err) => err -> IO ()
+handleError err = putStrLn $ "Error: " ++ show err
+
+handleSuccess :: WeatherResponse -> IO ()
+handleSuccess weatherResponse = do
+  print $ current weatherResponse
+  let weather = weatherResponseToWeatherData weatherResponse
+  print weather
+
+  connection <- connect defaultConnectInfo
+
+  addResult <- addWeatherData connection weather
+  print addResult
+
+  foundWeather <-
+    findWeatherData
+      connection
+      (latitude weather)
+      (longitude weather)
+      (timestamp weather)
+
+  print foundWeather

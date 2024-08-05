@@ -28,6 +28,7 @@ library
       Lib
       Lib.Config
       Lib.WeatherAPI
+      Lib.WeatherConverter
       Lib.WeatherDB
   other-modules:
       Paths_weather_caching_proxy
