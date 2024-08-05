@@ -28,6 +28,7 @@ library
       Lib
       Lib.Config
       Lib.WeatherAPI
+      Lib.WeatherDB
   other-modules:
       Paths_weather_caching_proxy
   autogen-modules:
@@ -40,6 +41,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , dotenv
+    , hedis
     , http-client
     , http-client-tls
     , servant
@@ -64,6 +66,7 @@ executable weather-caching-proxy-exe
     , base >=4.7 && <5
     , bytestring
     , dotenv
+    , hedis
     , http-client
     , http-client-tls
     , servant
@@ -90,6 +93,7 @@ test-suite weather-caching-proxy-test
     , base >=4.7 && <5
     , bytestring
     , dotenv
+    , hedis
     , http-client
     , http-client-tls
     , servant
