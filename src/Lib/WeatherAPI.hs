@@ -5,7 +5,6 @@
 module Lib.WeatherAPI
   ( WeatherResponse (..),
     WeatherData (..),
-    WeatherAPI,
     getWeatherData,
   )
 where
@@ -73,6 +72,7 @@ type WeatherAPI =
     :> QueryParam "wind_speed_unit" String
     :> QueryParam "timeformat" String
     :> QueryParam "forecast_days" Int
+    :> QueryParam "apikey" String
     :> Get '[JSON] WeatherResponse
 
 weatherAPI :: Proxy WeatherAPI
@@ -97,14 +97,12 @@ forecastDays = 1
 
 getWeatherData :: Double -> Double -> String -> ClientM WeatherResponse
 getWeatherData latitude longitude apiKey =
-  case apiKey of
-    "" ->
-      client
-        weatherAPI
-        (Just latitude)
-        (Just longitude)
-        (Just currentParams)
-        (Just windSpeedUnit)
-        (Just timeFormat)
-        (Just forecastDays)
-    _ -> undefined
+  client
+    weatherAPI
+    (Just latitude)
+    (Just longitude)
+    (Just currentParams)
+    (Just windSpeedUnit)
+    (Just timeFormat)
+    (Just forecastDays)
+    (if apiKey /= "" then Just apiKey else Nothing)

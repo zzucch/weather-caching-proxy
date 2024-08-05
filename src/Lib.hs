@@ -6,28 +6,40 @@ where
 import Configuration.Dotenv (defaultConfig, loadFile)
 import Lib.Config (getApiKey)
 import Lib.WeatherAPI (WeatherResponse (current), getWeatherData)
+import Network.HTTP.Client (Manager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant.Client
   ( BaseUrl (BaseUrl),
+    ClientEnv,
     Scheme (Https),
     mkClientEnv,
     runClientM,
   )
+
+createClientEnv :: Manager -> IO ClientEnv
+createClientEnv manager = do
+  mkClientEnv manager . apiBaseUrl <$> getApiKey
+
+apiBaseUrl :: String -> BaseUrl
+apiBaseUrl apiAppid =
+  case apiAppid of
+    "" -> BaseUrl Https "api.open-meteo.com" 443 ""
+    _ -> BaseUrl Https "customer-api.open-meteo.com" 443 ""
 
 runServer :: IO ()
 runServer = do
   manager <- newTlsManager
   loadFile defaultConfig
 
-  let apiBaseUrl = BaseUrl Https "api.open-meteo.com" 443 ""
-  let clientEnv = mkClientEnv manager apiBaseUrl
-  let apiLat = 39.099724
-  let apiLon = -94.578331
-  apiAppid <- getApiKey
+  let latitude = 39.099724
+  let longitude = -94.578331
+  apiKey <- getApiKey
+
+  clientEnv <- createClientEnv manager
 
   res <-
     runClientM
-      (getWeatherData apiLat apiLon apiAppid)
+      (getWeatherData latitude longitude apiKey)
       clientEnv
 
   case res of
