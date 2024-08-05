@@ -17,7 +17,7 @@ import Servant.Client
   )
 
 createClientEnv :: Manager -> IO ClientEnv
-createClientEnv manager = do
+createClientEnv manager =
   mkClientEnv manager . apiBaseUrl <$> getApiKey
 
 apiBaseUrl :: String -> BaseUrl
