@@ -26,10 +26,11 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Lib.Cache
       Lib.Config
-      Lib.WeatherAPI
-      Lib.WeatherConverter
-      Lib.WeatherDB
+      Lib.DataConverter
+      Lib.QueryAPI
+      Lib.Server
   other-modules:
       Paths_weather_caching_proxy
   autogen-modules:

@@ -6,9 +6,9 @@ where
 import Configuration.Dotenv (defaultConfig, loadFile)
 import Database.Redis (connect, defaultConnectInfo)
 import Lib.Config (getApiKey)
-import Lib.WeatherAPI (WeatherResponse (current), getWeatherData)
-import Lib.WeatherConverter
-import Lib.WeatherDB
+import Lib.QueryAPI (WeatherResponse (current), getWeatherData)
+import Lib.DataConverter
+import Lib.Cache
 import Network.HTTP.Client (Manager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant.Client
@@ -52,7 +52,7 @@ handleError err = putStrLn $ "Error: " ++ show err
 
 handleSuccess :: WeatherResponse -> IO ()
 handleSuccess weatherResponse = do
-  print $ current weatherResponse
+  print weatherResponse
   let weather = weatherResponseToWeatherData weatherResponse
   print weather
 

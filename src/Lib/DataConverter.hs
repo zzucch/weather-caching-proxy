@@ -1,10 +1,10 @@
-module Lib.WeatherConverter
+module Lib.DataConverter
   ( weatherResponseToWeatherData,
   )
 where
 
-import qualified Lib.WeatherAPI as API
-import qualified Lib.WeatherDB as DB
+import qualified Lib.QueryAPI as API
+import qualified Lib.Cache as DB
 
 weatherResponseToWeatherData :: API.WeatherResponse -> DB.WeatherData
 weatherResponseToWeatherData response =

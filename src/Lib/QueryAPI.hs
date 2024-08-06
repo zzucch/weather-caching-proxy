@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Lib.WeatherAPI
+module Lib.QueryAPI
   ( WeatherResponse (..),
     WeatherData (..),
     getWeatherData,
@@ -63,7 +63,7 @@ data WeatherData = WeatherData
 
 instance FromJSON WeatherData
 
-type WeatherAPI =
+type ExternalWeatherAPI =
   "v1"
     :> "forecast"
     :> QueryParam "latitude" Double
@@ -75,8 +75,8 @@ type WeatherAPI =
     :> QueryParam "apikey" String
     :> Get '[JSON] WeatherResponse
 
-weatherAPI :: Proxy WeatherAPI
-weatherAPI = Proxy
+externalWeatherAPI :: Proxy ExternalWeatherAPI
+externalWeatherAPI = Proxy
 
 currentParams :: String
 currentParams =
@@ -98,7 +98,7 @@ forecastDays = 1
 getWeatherData :: Double -> Double -> String -> ClientM WeatherResponse
 getWeatherData latitude longitude apiKey =
   client
-    weatherAPI
+    externalWeatherAPI
     (Just latitude)
     (Just longitude)
     (Just currentParams)

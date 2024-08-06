@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lib.WeatherDB
+module Lib.Cache
   ( addWeatherData,
     findWeatherData,
     WeatherData(..),
