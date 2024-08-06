@@ -6,14 +6,16 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Lib.Server where
+module Lib.Server
+  ( app,
+  )
+where
 
 import Control.Monad.IO.Class
 import Data.Maybe
 import Database.Redis
-import Lib.Cache (WeatherData, findWeatherData)
+import Lib.Cache (findWeatherResponse, WeatherResponse)
 import Network.Wai
-import Network.Wai.Handler.Warp
 import Servant
 import Prelude
 
@@ -22,7 +24,7 @@ type WeatherAPI =
     :> QueryParam "latitude" Double
     :> QueryParam "longitude" Double
     :> QueryParam "time" Int
-    :> Get '[JSON] WeatherData
+    :> Get '[JSON] WeatherResponse
 
 server :: Server WeatherAPI
 server = weather
@@ -31,7 +33,7 @@ server = weather
       Maybe Double ->
       Maybe Double ->
       Maybe Int ->
-      Handler WeatherData
+      Handler WeatherResponse
     weather mlatitude mlongitude mtime =
       case (mlatitude, mlongitude, mtime) of
         (Just lat, Just lon, Just t) -> do
@@ -39,7 +41,7 @@ server = weather
             liftIO $ connect defaultConnectInfo
 
           maybeWeatherData <-
-            liftIO $ findWeatherData connection lat lon t
+            liftIO $ findWeatherResponse connection lat lon t
 
           case maybeWeatherData of
             Just weatherData -> return weatherData
@@ -59,6 +61,3 @@ weatherAPI = Proxy
 
 app :: Application
 app = serve weatherAPI server
-
-start :: IO ()
-start = run 8081 app

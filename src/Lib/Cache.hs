@@ -2,26 +2,40 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lib.Cache
-  ( addWeatherData,
-    findWeatherData,
-    WeatherData(..),
+  ( addWeatherResponse,
+    findWeatherResponse,
+    WeatherResponse (..),
+    WeatherData (..),
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (pack)
 import Data.ByteString.Lazy (fromStrict, toStrict)
 import Database.Redis (Connection, Reply, Status, get, runRedis, set)
 import GHC.Generics (Generic)
 
-data WeatherData = WeatherData
+data WeatherResponse = WeatherResponse
   { latitude :: Double,
     longitude :: Double,
-    timestamp :: Int,
-    temperature :: Double,
+    generationtime_ms :: Double,
+    utc_offset_seconds :: Int,
+    elevation :: Double,
+    current :: WeatherData
+  }
+  deriving (Show, Eq, Generic)
+
+instance FromJSON WeatherResponse
+
+instance ToJSON WeatherResponse
+
+data WeatherData = WeatherData
+  { time :: Int,
+    interval :: Int,
+    temperature_2m :: Double,
+    relative_humidity_2m :: Int,
     apparent_temperature :: Double,
-    relative_humidity :: Int,
     is_day :: Int,
     precipitation :: Double,
     rain :: Int,
@@ -29,11 +43,11 @@ data WeatherData = WeatherData
     snowfall :: Int,
     weather_code :: Int,
     cloud_cover :: Int,
-    pressure_mean_sea_level :: Double,
+    pressure_msl :: Double,
     surface_pressure :: Double,
-    wind_speed :: Double,
-    wind_direction :: Int,
-    wind_gusts :: Double
+    wind_speed_10m :: Double,
+    wind_direction_10m :: Int,
+    wind_gusts_10m :: Double
   }
   deriving (Show, Eq, Generic)
 
@@ -42,34 +56,46 @@ instance FromJSON WeatherData
 instance ToJSON WeatherData
 
 weatherDataKey :: Double -> Double -> Int -> ByteString
-weatherDataKey lat lon time =
+weatherDataKey latitude' longitude' timestamp =
   pack $
     "weather:"
-      ++ show lat
+      ++ show latitude'
       ++ ":"
-      ++ show lon
+      ++ show longitude'
       ++ ":"
-      ++ show time
+      ++ show timestamp
 
-addWeatherData :: Connection -> WeatherData -> IO (Either Reply Status)
-addWeatherData connection weather = runRedis connection $ do
-  let key =
-        weatherDataKey
-          (latitude weather)
-          (longitude weather)
-          (timestamp weather)
-      value = toStrict $ encode weather
-  set key value
+addWeatherResponse ::
+  Connection ->
+  WeatherResponse ->
+  IO (Either Reply Status)
+addWeatherResponse connection weather =
+  runRedis connection $ do
+    let key =
+          weatherDataKey
+            (latitude weather)
+            (longitude weather)
+            (time $ current weather)
+        value = toStrict $ encode weather
 
-findWeatherData ::
+    set key value
+
+findWeatherResponse ::
   Connection ->
   Double ->
   Double ->
   Int ->
-  IO (Maybe WeatherData)
-findWeatherData connection lat lon time = runRedis connection $ do
-  let key = weatherDataKey lat lon time
-  res <- get key
-  return $ case res of
-    Right (Just val) -> decode $ fromStrict val
-    _ -> Nothing
+  IO (Maybe WeatherResponse)
+findWeatherResponse connection latitude' longitude' timestamp =
+  runRedis connection $ do
+    let key =
+          weatherDataKey
+            latitude'
+            longitude'
+            timestamp
+
+    res <- get key
+
+    return $ case res of
+      Right (Just value) -> decode $ fromStrict value
+      _ -> Nothing

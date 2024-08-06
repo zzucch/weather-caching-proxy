@@ -3,65 +3,34 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Lib.QueryAPI
-  ( WeatherResponse (..),
-    WeatherData (..),
-    getWeatherData,
+  ( getWeatherData,
   )
 where
 
 import Data.Aeson
-import Data.Aeson.Key (fromString)
+import Data.Aeson.Key
 import Data.Proxy
 import GHC.Generics
+import Lib.Cache
 import Servant.API
 import Servant.Client (ClientM, client)
 
-data WeatherResponse = WeatherResponse
-  { lat :: Double,
-    lon :: Double,
-    generationtime_ms :: Double,
-    utc_offset_seconds :: Int,
-    timezone :: String,
-    timezone_abbreviation :: String,
-    elevation :: Double,
-    current :: WeatherData
+newtype WeatherResponseAPI = WeatherResponseAPI
+  { unwrapWeatherResponse :: WeatherResponse
   }
-  deriving (Show, Generic)
+  deriving (Show, Eq, Generic)
 
-instance FromJSON WeatherResponse where
-  parseJSON = withObject "WeatherResponse" $ \v ->
-    WeatherResponse
-      <$> v .: fromString "latitude"
-      <*> v .: fromString "longitude"
-      <*> v .: fromString "generationtime_ms"
-      <*> v .: fromString "utc_offset_seconds"
-      <*> v .: fromString "timezone"
-      <*> v .: fromString "timezone_abbreviation"
-      <*> v .: fromString "elevation"
-      <*> v .: fromString "current"
-
-data WeatherData = WeatherData
-  { time :: Int,
-    interval :: Int,
-    temperature_2m :: Double,
-    relative_humidity_2m :: Int,
-    apparent_temperature :: Double,
-    is_day :: Int,
-    precipitation :: Double,
-    rain :: Int,
-    showers :: Double,
-    snowfall :: Int,
-    weather_code :: Int,
-    cloud_cover :: Int,
-    pressure_msl :: Double,
-    surface_pressure :: Double,
-    wind_speed_10m :: Double,
-    wind_direction_10m :: Int,
-    wind_gusts_10m :: Double
-  }
-  deriving (Show, Generic)
-
-instance FromJSON WeatherData
+instance FromJSON WeatherResponseAPI where
+  parseJSON = withObject "WeatherResponseAPI" $ \v ->
+    WeatherResponseAPI
+      <$> ( WeatherResponse
+              <$> v .: fromString "latitude"
+              <*> v .: fromString "longitude"
+              <*> v .: fromString "generationtime_ms"
+              <*> v .: fromString "utc_offset_seconds"
+              <*> v .: fromString "elevation"
+              <*> v .: fromString "current"
+          )
 
 type ExternalWeatherAPI =
   "v1"
@@ -96,11 +65,11 @@ forecastDays :: Int
 forecastDays = 1
 
 getWeatherData :: Double -> Double -> String -> ClientM WeatherResponse
-getWeatherData latitude longitude apiKey =
+getWeatherData latitude' longitude' apiKey =
   client
     externalWeatherAPI
-    (Just latitude)
-    (Just longitude)
+    (Just latitude')
+    (Just longitude')
     (Just currentParams)
     (Just windSpeedUnit)
     (Just timeFormat)

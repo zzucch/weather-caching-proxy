@@ -28,7 +28,6 @@ library
       Lib
       Lib.Cache
       Lib.Config
-      Lib.DataConverter
       Lib.QueryAPI
       Lib.Server
   other-modules:
