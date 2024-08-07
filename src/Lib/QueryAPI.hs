@@ -3,8 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Lib.QueryAPI
-  ( getWeatherData,
-    createClientEnv,
+  ( getWeatherResponse,
   )
 where
 
@@ -13,7 +12,9 @@ import Data.Aeson.Key
 import Data.Proxy
 import GHC.Generics
 import Lib.Cache
+import Lib.Config (getApiKey)
 import Network.HTTP.Client (Manager)
+import Network.HTTP.Client.TLS (newTlsManager)
 import Servant.API
 import Servant.Client
   ( BaseUrl (..),
@@ -22,6 +23,7 @@ import Servant.Client
     Scheme (Https),
     client,
     mkClientEnv,
+    runClientM,
   )
 
 newtype WeatherResponseAPI = WeatherResponseAPI
@@ -77,8 +79,8 @@ timeFormat = "unixtime"
 forecastDays :: Int
 forecastDays = 1
 
-getWeatherData :: Double -> Double -> String -> ClientM WeatherResponse
-getWeatherData latitude' longitude' apiKey =
+getWeatherResponseClientM :: Double -> Double -> String -> ClientM WeatherResponse
+getWeatherResponseClientM latitude' longitude' apiKey =
   client
     externalWeatherAPI
     (Just latitude')
@@ -98,3 +100,22 @@ apiBaseUrl apiKey =
 createClientEnv :: Manager -> String -> IO ClientEnv
 createClientEnv manager apiKey =
   return $ mkClientEnv manager (apiBaseUrl apiKey)
+
+getWeatherResponse :: Double -> Double -> IO (Maybe WeatherResponse)
+getWeatherResponse latitude' longitude' = do
+  manager <- newTlsManager
+  apiKey <- getApiKey
+  clientEnv <- createClientEnv manager apiKey
+
+  res <-
+    runClientM
+      ( getWeatherResponseClientM
+          latitude'
+          longitude'
+          apiKey
+      )
+      clientEnv
+
+  case res of
+    Right weatherResponse -> return (Just weatherResponse)
+    Left _ -> return Nothing

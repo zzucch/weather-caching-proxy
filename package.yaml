@@ -21,18 +21,19 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- async
 - servant
 - servant-server
 - servant-client
 - http-client
+- http-client-tls
 - wai
 - warp
-- http-client-tls
-- dotenv
+- hedis
 - aeson
+- dotenv
 - text
 - bytestring
-- hedis
 
 ghc-options:
 - -Wall

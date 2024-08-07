@@ -11,10 +11,12 @@ module Lib.Server
   )
 where
 
+import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Data.Maybe
 import Database.Redis
-import Lib.Cache (findWeatherResponse, WeatherResponse)
+import Lib.Cache (WeatherResponse, findWeatherResponse)
+import Lib.QueryAPI (getWeatherResponse)
 import Network.Wai
 import Servant
 import Prelude
@@ -37,15 +39,14 @@ server = weather
     weather mlatitude mlongitude mtime =
       case (mlatitude, mlongitude, mtime) of
         (Just lat, Just lon, Just t) -> do
-          connection <-
-            liftIO $ connect defaultConnectInfo
-
-          maybeWeatherData <-
-            liftIO $ findWeatherResponse connection lat lon t
-
-          case maybeWeatherData of
-            Just weatherData -> return weatherData
-            Nothing ->
+          res <-
+            liftIO $ race
+              (liftIO $ getFromCache lat lon t)
+              (getFromRemote lat lon)
+          case res of
+            Left (Just weatherData) -> return weatherData
+            Right (Just weatherData) -> return weatherData
+            _ ->
               throwError
                 err404
                   { errBody = "could not retrieve weather data"
@@ -61,3 +62,12 @@ weatherAPI = Proxy
 
 app :: Application
 app = serve weatherAPI server
+
+getFromCache :: Double -> Double -> Int -> IO (Maybe WeatherResponse)
+getFromCache lat lon t = do
+  connection <- liftIO $ connect defaultConnectInfo
+  findWeatherResponse connection lat lon t
+
+getFromRemote :: Double -> Double -> IO (Maybe WeatherResponse)
+getFromRemote lat lon = do
+  getWeatherResponse lat lon
