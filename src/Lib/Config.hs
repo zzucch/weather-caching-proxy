@@ -3,11 +3,13 @@ module Lib.Config
   )
 where
 
+import Configuration.Dotenv (defaultConfig, loadFile)
 import System.Environment (lookupEnv)
 import System.Exit (exitFailure)
 
 getApiKey :: IO String
 getApiKey = do
+  loadFile defaultConfig
   apiKey <- lookupEnv "API_KEY"
   case apiKey of
     Just key -> return key

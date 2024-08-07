@@ -11,12 +11,13 @@ module Lib.Server
   )
 where
 
-import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Data.Maybe
 import Database.Redis
+import Debug.Trace
 import Lib.Cache (WeatherResponse, findWeatherResponse)
 import Lib.QueryAPI (getWeatherResponse)
+import Lib.Time (isCurrentTime)
 import Network.Wai
 import Servant
 import Prelude
@@ -36,21 +37,33 @@ server = weather
       Maybe Double ->
       Maybe Int ->
       Handler WeatherResponse
-    weather mlatitude mlongitude mtime =
+    weather mlatitude mlongitude mtime = do
       case (mlatitude, mlongitude, mtime) of
         (Just lat, Just lon, Just t) -> do
-          res <-
-            liftIO $ race
-              (liftIO $ getFromCache lat lon t)
-              (getFromRemote lat lon)
-          case res of
-            Left (Just weatherData) -> return weatherData
-            Right (Just weatherData) -> return weatherData
-            _ ->
-              throwError
-                err404
-                  { errBody = "could not retrieve weather data"
-                  }
+          isCurrent <- liftIO $ isCurrentTime t
+          if isCurrent
+            then do
+              remoteData <- liftIO $ getFromRemote lat lon
+              case remoteData of
+                Just weatherData -> return weatherData
+                Nothing -> do
+                  cachedData <- liftIO $ getFromCache lat lon t
+                  case cachedData of
+                    Just weatherData -> return weatherData
+                    Nothing ->
+                      throwError
+                        err404
+                          { errBody = "could not retrieve weather data"
+                          }
+            else do
+              cachedData <- liftIO $ getFromCache lat lon t
+              case cachedData of
+                Just weatherData -> return weatherData
+                Nothing ->
+                  throwError
+                    err404
+                      { errBody = "could not retrieve weather data"
+                      }
         _ ->
           throwError
             err400
@@ -66,8 +79,13 @@ app = serve weatherAPI server
 getFromCache :: Double -> Double -> Int -> IO (Maybe WeatherResponse)
 getFromCache lat lon t = do
   connection <- liftIO $ connect defaultConnectInfo
-  findWeatherResponse connection lat lon t
+  res <- findWeatherResponse connection lat lon t
+  trace ("cache: " ++ show res) return ()
+  return res
 
 getFromRemote :: Double -> Double -> IO (Maybe WeatherResponse)
 getFromRemote lat lon = do
-  getWeatherResponse lat lon
+  trace "getting remote response" return ()
+  res <- getWeatherResponse lat lon
+  trace ("remote: " ++ show res) return ()
+  return res
