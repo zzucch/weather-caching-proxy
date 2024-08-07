@@ -11,14 +11,9 @@ module Lib.Server
   )
 where
 
-import Control.Concurrent
-import Control.Concurrent.Async
-import Control.Monad.IO.Class
 import Data.Maybe
-import Database.Redis
-import Lib.Cache (WeatherResponse, findWeatherResponse)
-import Lib.QueryAPI (getWeatherResponse)
-import Lib.Time (isCurrentTime)
+import Lib.Cache (WeatherResponse)
+import Lib.DataFetch (getWeatherData)
 import Network.Wai
 import Servant
 import Prelude
@@ -29,22 +24,6 @@ type WeatherAPI =
     :> QueryParam "longitude" Double
     :> QueryParam "time" Int
     :> Get '[JSON] WeatherResponse
-
-getRemoteData ::
-  Double ->
-  Double ->
-  IO (Maybe WeatherResponse)
-getRemoteData latitude longitude = do
-  getWeatherResponse latitude longitude
-
-getCachedData ::
-  Double ->
-  Double ->
-  Int ->
-  IO (Maybe WeatherResponse)
-getCachedData latitude longitude time' = do
-  connection <- liftIO $ connect defaultConnectInfo
-  findWeatherResponse connection latitude longitude time'
 
 notFoundError :: ServerError
 notFoundError =
@@ -57,39 +36,6 @@ invalidParametersError =
   err400
     { errBody = "Invalid parameters"
     }
-
-waitForFirstNonNothingResult ::
-  IO (Maybe a) ->
-  IO (Maybe a) ->
-  IO (Maybe a)
-waitForFirstNonNothingResult action1 action2 = do
-  resultVar <- newEmptyMVar
-  let setResult x = case x of
-        Just y -> tryPutMVar resultVar (Just y)
-        Nothing -> return False
-
-  _ <-
-    concurrently
-      (action1 >>= setResult)
-      (action2 >>= setResult)
-  takeMVar resultVar
-
-getWeatherData ::
-  Double ->
-  Double ->
-  Int ->
-  Handler (Maybe WeatherResponse)
-getWeatherData latitude longitude time' = do
-  isCurrent <- liftIO $ isCurrentTime time'
-  if isCurrent
-    then
-      liftIO $
-        waitForFirstNonNothingResult
-          (getCachedData latitude longitude time')
-          (getRemoteData latitude longitude)
-    else
-      liftIO $
-        getCachedData latitude longitude time'
 
 server :: Server WeatherAPI
 server = weather

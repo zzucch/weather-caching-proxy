@@ -27,7 +27,9 @@ library
   exposed-modules:
       Lib
       Lib.Cache
+      Lib.Concurrency
       Lib.Config
+      Lib.DataFetch
       Lib.QueryAPI
       Lib.Server
       Lib.Time
