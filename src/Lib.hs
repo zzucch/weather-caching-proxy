@@ -7,26 +7,9 @@ import Configuration.Dotenv (defaultConfig, loadFile)
 import Database.Redis (connect, defaultConnectInfo)
 import Lib.Cache
 import Lib.Config (getApiKey)
-import Lib.QueryAPI (getWeatherData)
-import Network.HTTP.Client (Manager)
+import Lib.QueryAPI (createClientEnv, getWeatherData)
 import Network.HTTP.Client.TLS (newTlsManager)
-import Servant.Client
-  ( BaseUrl (BaseUrl),
-    ClientEnv,
-    Scheme (Https),
-    mkClientEnv,
-    runClientM,
-  )
-
-createClientEnv :: Manager -> IO ClientEnv
-createClientEnv manager =
-  mkClientEnv manager . apiBaseUrl <$> getApiKey
-
-apiBaseUrl :: String -> BaseUrl
-apiBaseUrl apiAppid =
-  case apiAppid of
-    "" -> BaseUrl Https "api.open-meteo.com" 443 ""
-    _ -> BaseUrl Https "customer-api.open-meteo.com" 443 ""
+import Servant.Client (runClientM)
 
 runServer :: IO ()
 runServer = do
@@ -37,7 +20,7 @@ runServer = do
   let lon = 77.216721
   apiKey <- getApiKey
 
-  clientEnv <- createClientEnv manager
+  clientEnv <- createClientEnv manager apiKey
 
   res <-
     runClientM

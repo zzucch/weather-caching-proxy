@@ -4,6 +4,7 @@
 
 module Lib.QueryAPI
   ( getWeatherData,
+    createClientEnv,
   )
 where
 
@@ -12,8 +13,16 @@ import Data.Aeson.Key
 import Data.Proxy
 import GHC.Generics
 import Lib.Cache
+import Network.HTTP.Client (Manager)
 import Servant.API
-import Servant.Client (ClientM, client)
+import Servant.Client
+  ( BaseUrl (..),
+    ClientEnv,
+    ClientM,
+    Scheme (Https),
+    client,
+    mkClientEnv,
+  )
 
 newtype WeatherResponseAPI = WeatherResponseAPI
   { unwrapWeatherResponse :: WeatherResponse
@@ -21,16 +30,17 @@ newtype WeatherResponseAPI = WeatherResponseAPI
   deriving (Show, Eq, Generic)
 
 instance FromJSON WeatherResponseAPI where
-  parseJSON = withObject "WeatherResponseAPI" $ \v ->
-    WeatherResponseAPI
-      <$> ( WeatherResponse
-              <$> v .: fromString "latitude"
-              <*> v .: fromString "longitude"
-              <*> v .: fromString "generationtime_ms"
-              <*> v .: fromString "utc_offset_seconds"
-              <*> v .: fromString "elevation"
-              <*> v .: fromString "current"
-          )
+  parseJSON =
+    withObject "WeatherResponseAPI" $ \v ->
+      WeatherResponseAPI
+        <$> ( WeatherResponse
+                <$> v .: fromString "latitude"
+                <*> v .: fromString "longitude"
+                <*> v .: fromString "generationtime_ms"
+                <*> v .: fromString "utc_offset_seconds"
+                <*> v .: fromString "elevation"
+                <*> v .: fromString "current"
+            )
 
 type ExternalWeatherAPI =
   "v1"
@@ -46,6 +56,9 @@ type ExternalWeatherAPI =
 
 externalWeatherAPI :: Proxy ExternalWeatherAPI
 externalWeatherAPI = Proxy
+
+ifNotEmpty :: String -> Maybe String
+ifNotEmpty x = if x /= "" then Just x else Nothing
 
 currentParams :: String
 currentParams =
@@ -74,4 +87,14 @@ getWeatherData latitude' longitude' apiKey =
     (Just windSpeedUnit)
     (Just timeFormat)
     (Just forecastDays)
-    (if apiKey /= "" then Just apiKey else Nothing)
+    (ifNotEmpty apiKey)
+
+apiBaseUrl :: String -> BaseUrl
+apiBaseUrl apiKey =
+  case apiKey of
+    "" -> BaseUrl Https "api.open-meteo.com" 443 ""
+    _ -> BaseUrl Https "customer-api.open-meteo.com" 443 ""
+
+createClientEnv :: Manager -> String -> IO ClientEnv
+createClientEnv manager apiKey =
+  return $ mkClientEnv manager (apiBaseUrl apiKey)
