@@ -11,10 +11,11 @@ module Lib.Server
   )
 where
 
+import Control.Concurrent
+import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Data.Maybe
 import Database.Redis
-import Debug.Trace
 import Lib.Cache (WeatherResponse, findWeatherResponse)
 import Lib.QueryAPI (getWeatherResponse)
 import Lib.Time (isCurrentTime)
@@ -29,6 +30,67 @@ type WeatherAPI =
     :> QueryParam "time" Int
     :> Get '[JSON] WeatherResponse
 
+getRemoteData ::
+  Double ->
+  Double ->
+  IO (Maybe WeatherResponse)
+getRemoteData latitude longitude = do
+  getWeatherResponse latitude longitude
+
+getCachedData ::
+  Double ->
+  Double ->
+  Int ->
+  IO (Maybe WeatherResponse)
+getCachedData latitude longitude time' = do
+  connection <- liftIO $ connect defaultConnectInfo
+  findWeatherResponse connection latitude longitude time'
+
+notFoundError :: ServerError
+notFoundError =
+  err404
+    { errBody = "Could not retrieve weather data"
+    }
+
+invalidParametersError :: ServerError
+invalidParametersError =
+  err400
+    { errBody = "Invalid parameters"
+    }
+
+waitForFirstNonNothingResult ::
+  IO (Maybe a) ->
+  IO (Maybe a) ->
+  IO (Maybe a)
+waitForFirstNonNothingResult action1 action2 = do
+  resultVar <- newEmptyMVar
+  let setResult x = case x of
+        Just y -> tryPutMVar resultVar (Just y)
+        Nothing -> return False
+
+  _ <-
+    concurrently
+      (action1 >>= setResult)
+      (action2 >>= setResult)
+  takeMVar resultVar
+
+getWeatherData ::
+  Double ->
+  Double ->
+  Int ->
+  Handler (Maybe WeatherResponse)
+getWeatherData latitude longitude time' = do
+  isCurrent <- liftIO $ isCurrentTime time'
+  if isCurrent
+    then
+      liftIO $
+        waitForFirstNonNothingResult
+          (getCachedData latitude longitude time')
+          (getRemoteData latitude longitude)
+    else
+      liftIO $
+        getCachedData latitude longitude time'
+
 server :: Server WeatherAPI
 server = weather
   where
@@ -37,55 +99,18 @@ server = weather
       Maybe Double ->
       Maybe Int ->
       Handler WeatherResponse
-    weather mlatitude mlongitude mtime = do
-      case (mlatitude, mlongitude, mtime) of
-        (Just lat, Just lon, Just t) -> do
-          isCurrent <- liftIO $ isCurrentTime t
-          if isCurrent
-            then do
-              remoteData <- liftIO $ getFromRemote lat lon
-              case remoteData of
-                Just weatherData -> return weatherData
-                Nothing -> do
-                  cachedData <- liftIO $ getFromCache lat lon t
-                  case cachedData of
-                    Just weatherData -> return weatherData
-                    Nothing ->
-                      throwError
-                        err404
-                          { errBody = "could not retrieve weather data"
-                          }
-            else do
-              cachedData <- liftIO $ getFromCache lat lon t
-              case cachedData of
-                Just weatherData -> return weatherData
-                Nothing ->
-                  throwError
-                    err404
-                      { errBody = "could not retrieve weather data"
-                      }
-        _ ->
-          throwError
-            err400
-              { errBody = "invalid parameters"
-              }
+    weather (Just latitude) (Just longitude) (Just time') = do
+      res <-
+        getWeatherData
+          latitude
+          longitude
+          time'
+      maybe (throwError notFoundError) return res
+    weather _ _ _ =
+      throwError invalidParametersError
 
 weatherAPI :: Proxy WeatherAPI
 weatherAPI = Proxy
 
 app :: Application
 app = serve weatherAPI server
-
-getFromCache :: Double -> Double -> Int -> IO (Maybe WeatherResponse)
-getFromCache lat lon t = do
-  connection <- liftIO $ connect defaultConnectInfo
-  res <- findWeatherResponse connection lat lon t
-  trace ("cache: " ++ show res) return ()
-  return res
-
-getFromRemote :: Double -> Double -> IO (Maybe WeatherResponse)
-getFromRemote lat lon = do
-  trace "getting remote response" return ()
-  res <- getWeatherResponse lat lon
-  trace ("remote: " ++ show res) return ()
-  return res

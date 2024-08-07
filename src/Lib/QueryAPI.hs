@@ -79,7 +79,11 @@ timeFormat = "unixtime"
 forecastDays :: Int
 forecastDays = 1
 
-getWeatherResponseClientM :: Double -> Double -> String -> ClientM WeatherResponse
+getWeatherResponseClientM ::
+  Double ->
+  Double ->
+  String ->
+  ClientM WeatherResponse
 getWeatherResponseClientM latitude' longitude' apiKey =
   client
     externalWeatherAPI
@@ -101,7 +105,10 @@ createClientEnv :: Manager -> String -> IO ClientEnv
 createClientEnv manager apiKey =
   return $ mkClientEnv manager (apiBaseUrl apiKey)
 
-getWeatherResponse :: Double -> Double -> IO (Maybe WeatherResponse)
+getWeatherResponse ::
+  Double ->
+  Double ->
+  IO (Maybe WeatherResponse)
 getWeatherResponse latitude' longitude' = do
   manager <- newTlsManager
   apiKey <- getApiKey
