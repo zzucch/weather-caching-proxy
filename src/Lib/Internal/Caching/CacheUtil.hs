@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lib.CacheUtil
+module Lib.Internal.Caching.CacheUtil
   ( weatherDataKey,
   )
 where

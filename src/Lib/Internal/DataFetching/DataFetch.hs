@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Lib.DataFetch
+module Lib.Internal.DataFetching.DataFetch
   ( getFromRemoteAndCacheData,
     getCachedData,
   )
@@ -12,17 +12,22 @@ import Control.Monad.IO.Class
 import Data.Maybe
 import Database.Redis
 import Debug.Trace (trace)
-import Lib.Cache (WeatherResponse, addWeatherResponse, findWeatherResponse)
-import Lib.QueryAPI (getWeatherResponse)
+import Lib.Internal.Caching.Cache
+  ( WeatherResponse,
+    addWeatherResponse,
+    findWeatherResponse,
+  )
+import Lib.Internal.DataFetching.QueryAPI (getWeatherResponse)
 import Prelude
 
 getFromRemoteAndCacheData ::
+  String ->
   Double ->
   Double ->
   IO (Maybe WeatherResponse)
-getFromRemoteAndCacheData latitude longitude = do
+getFromRemoteAndCacheData apiKey latitude longitude = do
   res <-
-    getWeatherResponse latitude longitude
+    getWeatherResponse apiKey latitude longitude
   case res of
     Just response -> do
       _ <- forkIO $ do

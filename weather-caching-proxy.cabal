@@ -25,16 +25,15 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
       Lib.Autocache
-      Lib.Cache
-      Lib.CacheUtil
-      Lib.Concurrency
       Lib.Config
-      Lib.DataFetch
-      Lib.QueryAPI
+      Lib.Internal.Caching.Cache
+      Lib.Internal.Caching.CacheUtil
+      Lib.Internal.DataFetching.DataFetch
+      Lib.Internal.DataFetching.QueryAPI
+      Lib.Internal.Utils.Concurrency
+      Lib.Internal.Utils.Time
       Lib.Server
-      Lib.Time
   other-modules:
       Paths_weather_caching_proxy
   autogen-modules:

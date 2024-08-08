@@ -1,4 +1,4 @@
-module Lib.Concurrency
+module Lib.Internal.Utils.Concurrency
   ( waitForFirstNonNothingResult,
   )
 where

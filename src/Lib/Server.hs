@@ -13,10 +13,10 @@ where
 
 import Control.Monad.IO.Class
 import Data.Maybe
-import Lib.Cache (WeatherResponse)
-import Lib.Concurrency (waitForFirstNonNothingResult)
-import Lib.DataFetch
-import Lib.Time (isCurrentTime)
+import Lib.Internal.Caching.Cache (WeatherResponse)
+import Lib.Internal.DataFetching.DataFetch
+import Lib.Internal.Utils.Concurrency (waitForFirstNonNothingResult)
+import Lib.Internal.Utils.Time (isCurrentTime)
 import Network.Wai
 import Servant
 import Prelude
@@ -41,24 +41,25 @@ invalidParametersError =
     }
 
 getWeatherData ::
+  String ->
   Double ->
   Double ->
   Int ->
   Handler (Maybe WeatherResponse)
-getWeatherData latitude longitude time' = do
+getWeatherData apiKey latitude longitude time' = do
   isCurrent <- liftIO $ isCurrentTime time'
   if isCurrent
     then
       liftIO $
         waitForFirstNonNothingResult
           (getCachedData latitude longitude time')
-          (getFromRemoteAndCacheData latitude longitude)
+          (getFromRemoteAndCacheData apiKey latitude longitude)
     else
       liftIO $
         getCachedData latitude longitude time'
 
-server :: Server WeatherAPI
-server = weather
+server :: String -> Server WeatherAPI
+server apiKey = weather
   where
     weather ::
       Maybe Double ->
@@ -68,6 +69,7 @@ server = weather
     weather (Just latitude) (Just longitude) (Just time') = do
       res <-
         getWeatherData
+          apiKey
           latitude
           longitude
           time'
@@ -78,5 +80,5 @@ server = weather
 weatherAPI :: Proxy WeatherAPI
 weatherAPI = Proxy
 
-app :: Application
-app = serve weatherAPI server
+app :: String -> Application
+app apiKey = serve weatherAPI $ server apiKey

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Lib.Cache
+module Lib.Internal.Caching.Cache
   ( addWeatherResponse,
     findWeatherResponse,
     WeatherResponse (..),
@@ -12,7 +12,7 @@ import Data.Aeson
 import Data.ByteString.Lazy (fromStrict, toStrict)
 import Database.Redis (Connection, Reply, Status, get, runRedis, set)
 import GHC.Generics (Generic)
-import Lib.CacheUtil
+import Lib.Internal.Caching.CacheUtil
 
 data WeatherResponse = WeatherResponse
   { latitude :: Double,

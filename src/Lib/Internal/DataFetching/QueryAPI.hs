@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Lib.QueryAPI
+module Lib.Internal.DataFetching.QueryAPI
   ( getWeatherResponse,
   )
 where
@@ -11,8 +11,7 @@ import Data.Aeson
 import Data.Aeson.Key
 import Data.Proxy
 import GHC.Generics
-import Lib.Cache
-import Lib.Config (getApiKey)
+import Lib.Internal.Caching.Cache
 import Network.HTTP.Client (Manager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant.API
@@ -106,12 +105,12 @@ createClientEnv manager apiKey =
   return $ mkClientEnv manager (apiBaseUrl apiKey)
 
 getWeatherResponse ::
+  String ->
   Double ->
   Double ->
   IO (Maybe WeatherResponse)
-getWeatherResponse latitude' longitude' = do
+getWeatherResponse apiKey latitude' longitude' = do
   manager <- newTlsManager
-  apiKey <- getApiKey
   clientEnv <- createClientEnv manager apiKey
   res <-
     runClientM

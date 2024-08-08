@@ -1,4 +1,4 @@
-module Lib.Time
+module Lib.Internal.Utils.Time
   ( isCurrentTime,
   )
 where
