@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lib
       Lib.Cache
+      Lib.CacheUtil
       Lib.Concurrency
       Lib.Config
       Lib.DataFetch

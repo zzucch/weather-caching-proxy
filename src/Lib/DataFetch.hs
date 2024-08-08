@@ -1,16 +1,19 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Lib.DataFetch
-  ( getWeatherData,
+  ( getRemoteData,
+    getCachedData,
   )
 where
 
+import Control.Concurrent (forkIO)
+import Control.Exception (SomeException, try)
 import Control.Monad.IO.Class
 import Data.Maybe
 import Database.Redis
-import Lib.Cache (WeatherResponse, findWeatherResponse)
-import Lib.Concurrency (waitForFirstNonNothingResult)
+import Debug.Trace (trace)
+import Lib.Cache (WeatherResponse, addWeatherResponse, findWeatherResponse)
 import Lib.QueryAPI (getWeatherResponse)
-import Lib.Time (isCurrentTime)
-import Servant
 import Prelude
 
 getRemoteData ::
@@ -18,7 +21,17 @@ getRemoteData ::
   Double ->
   IO (Maybe WeatherResponse)
 getRemoteData latitude longitude = do
-  getWeatherResponse latitude longitude
+  res <-
+    getWeatherResponse latitude longitude
+  case res of
+    Just response -> do
+      _ <- forkIO $ do
+        trace ("forking.. response is: " ++ show response) return ()
+        connection <- connect defaultConnectInfo
+        _ <- addWeatherResponse connection response
+        return ()
+      return res
+    Nothing -> return res
 
 getCachedData ::
   Double ->
@@ -26,22 +39,11 @@ getCachedData ::
   Int ->
   IO (Maybe WeatherResponse)
 getCachedData latitude longitude time' = do
-  connection <- liftIO $ connect defaultConnectInfo
-  findWeatherResponse connection latitude longitude time'
-
-getWeatherData ::
-  Double ->
-  Double ->
-  Int ->
-  Handler (Maybe WeatherResponse)
-getWeatherData latitude longitude time' = do
-  isCurrent <- liftIO $ isCurrentTime time'
-  if isCurrent
-    then
-      liftIO $
-        waitForFirstNonNothingResult
-          (getCachedData latitude longitude time')
-          (getRemoteData latitude longitude)
-    else
-      liftIO $
-        getCachedData latitude longitude time'
+  result <- try $ do
+    connection <- liftIO $ connect defaultConnectInfo
+    findWeatherResponse connection latitude longitude time'
+  case result of
+    Right weatherResponse -> return weatherResponse
+    Left (e :: SomeException) -> do
+      putStrLn $ "Error connecting to Redis: " ++ show e
+      return Nothing

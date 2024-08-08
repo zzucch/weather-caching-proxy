@@ -2,4 +2,4 @@
 *~
 .direnv/
 .env
-deployment/.tmp*
+deployments/.tmp*

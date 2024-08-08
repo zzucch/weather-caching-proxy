@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Lib.Cache
   ( addWeatherResponse,
@@ -10,11 +9,10 @@ module Lib.Cache
 where
 
 import Data.Aeson
-import Data.ByteString (ByteString)
-import Data.ByteString.Char8 (pack)
 import Data.ByteString.Lazy (fromStrict, toStrict)
 import Database.Redis (Connection, Reply, Status, get, runRedis, set)
 import GHC.Generics (Generic)
+import Lib.CacheUtil
 
 data WeatherResponse = WeatherResponse
   { latitude :: Double,
@@ -54,16 +52,6 @@ data WeatherData = WeatherData
 instance FromJSON WeatherData
 
 instance ToJSON WeatherData
-
-weatherDataKey :: Double -> Double -> Int -> ByteString
-weatherDataKey latitude' longitude' timestamp =
-  pack $
-    "weather:"
-      ++ show latitude'
-      ++ ":"
-      ++ show longitude'
-      ++ ":"
-      ++ show timestamp
 
 addWeatherResponse ::
   Connection ->

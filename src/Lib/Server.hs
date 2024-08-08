@@ -11,9 +11,12 @@ module Lib.Server
   )
 where
 
+import Control.Monad.IO.Class
 import Data.Maybe
 import Lib.Cache (WeatherResponse)
-import Lib.DataFetch (getWeatherData)
+import Lib.Concurrency (waitForFirstNonNothingResult)
+import Lib.DataFetch
+import Lib.Time (isCurrentTime)
 import Network.Wai
 import Servant
 import Prelude
@@ -36,6 +39,23 @@ invalidParametersError =
   err400
     { errBody = "Invalid parameters"
     }
+
+getWeatherData ::
+  Double ->
+  Double ->
+  Int ->
+  Handler (Maybe WeatherResponse)
+getWeatherData latitude longitude time' = do
+  isCurrent <- liftIO $ isCurrentTime time'
+  if isCurrent
+    then
+      liftIO $
+        waitForFirstNonNothingResult
+          (getCachedData latitude longitude time')
+          (getRemoteData latitude longitude)
+    else
+      liftIO $
+        getCachedData latitude longitude time'
 
 server :: Server WeatherAPI
 server = weather
