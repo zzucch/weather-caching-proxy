@@ -113,7 +113,6 @@ getWeatherResponse latitude' longitude' = do
   manager <- newTlsManager
   apiKey <- getApiKey
   clientEnv <- createClientEnv manager apiKey
-
   res <-
     runClientM
       ( getWeatherResponseClientM
@@ -122,7 +121,6 @@ getWeatherResponse latitude' longitude' = do
           apiKey
       )
       clientEnv
-
   case res of
     Right weatherResponse -> return (Just weatherResponse)
     Left _ -> return Nothing

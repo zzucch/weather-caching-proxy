@@ -1,5 +1,6 @@
-.stack-work/
 *~
 .direnv/
-.env
+.stack-work/
 deployments/.tmp*
+
+.env

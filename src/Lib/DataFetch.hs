@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Lib.DataFetch
-  ( getRemoteData,
+  ( getFromRemoteAndCacheData,
     getCachedData,
   )
 where
@@ -16,11 +16,11 @@ import Lib.Cache (WeatherResponse, addWeatherResponse, findWeatherResponse)
 import Lib.QueryAPI (getWeatherResponse)
 import Prelude
 
-getRemoteData ::
+getFromRemoteAndCacheData ::
   Double ->
   Double ->
   IO (Maybe WeatherResponse)
-getRemoteData latitude longitude = do
+getFromRemoteAndCacheData latitude longitude = do
   res <-
     getWeatherResponse latitude longitude
   case res of

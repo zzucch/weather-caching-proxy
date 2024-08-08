@@ -52,7 +52,7 @@ getWeatherData latitude longitude time' = do
       liftIO $
         waitForFirstNonNothingResult
           (getCachedData latitude longitude time')
-          (getRemoteData latitude longitude)
+          (getFromRemoteAndCacheData latitude longitude)
     else
       liftIO $
         getCachedData latitude longitude time'
