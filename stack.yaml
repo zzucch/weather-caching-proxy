@@ -67,4 +67,4 @@ packages:
 # compiler-check: newer-minor
 nix:
   enable: true
-  packages: [zlib, glpk, pcre]
+  packages: []
