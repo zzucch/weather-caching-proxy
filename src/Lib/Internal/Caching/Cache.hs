@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module Lib.Internal.Caching.Cache
   ( addWeatherResponse,
@@ -13,6 +14,7 @@ import Data.ByteString.Lazy (fromStrict, toStrict)
 import Database.Redis (Connection, Reply, Status, get, runRedis, set)
 import GHC.Generics (Generic)
 import Lib.Internal.Caching.CacheUtil
+import Lib.Util
 
 data WeatherResponse = WeatherResponse
   { latitude :: Double,
@@ -56,34 +58,45 @@ instance ToJSON WeatherData
 addWeatherResponse ::
   Connection ->
   WeatherResponse ->
+  WeatherOffsets ->
   IO (Either Reply Status)
-addWeatherResponse connection weather =
-  runRedis connection $ do
-    let key =
-          weatherDataKey
-            (latitude weather)
-            (longitude weather)
-            (time $ current weather)
-        value = toStrict $ encode weather
+addWeatherResponse
+  connection
+  weather
+  offsets =
+    runRedis connection $ do
+      let key =
+            weatherDataKey
+              WeatherParams
+                { timestamp = weather.current.time,
+                  locationParams =
+                    LocationParams
+                      { Lib.Util.longitude = weather.longitude,
+                        Lib.Util.latitude = weather.latitude
+                      }
+                }
+              offsets
+          value = toStrict $ encode weather
 
-    set key value
+      set key value
 
 findWeatherResponse ::
   Connection ->
-  Double ->
-  Double ->
-  Int ->
+  WeatherParams ->
+  WeatherOffsets ->
   IO (Maybe WeatherResponse)
-findWeatherResponse connection latitude' longitude' timestamp =
-  runRedis connection $ do
-    let key =
-          weatherDataKey
-            latitude'
-            longitude'
-            timestamp
+findWeatherResponse
+  connection
+  params
+  offsets =
+    runRedis connection $ do
+      let key =
+            weatherDataKey
+              params
+              offsets
 
-    res <- get key
+      res <- get key
 
-    return $ case res of
-      Right (Just value) -> decode $ fromStrict value
-      _ -> Nothing
+      return $ case res of
+        Right (Just value) -> decode $ fromStrict value
+        _ -> Nothing

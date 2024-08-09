@@ -3,18 +3,33 @@ module Lib.Autocache
   )
 where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent.Thread.Delay
 import Control.Monad (forever)
 import Control.Monad.IO.Class
-import Lib.Config (getApiKey)
 import Lib.Internal.DataFetching.DataFetch (getFromRemoteAndCacheData)
+import Lib.Internal.Utils.Time (secondsToMicroseconds)
+import Lib.Util
 
-startAutoCaching :: IO ()
-startAutoCaching = do
-  apiKey <- getApiKey
-  forever $ do
-    let lat = 28.6448
-    let lon = 77.216721
-    response <- liftIO $ getFromRemoteAndCacheData apiKey lat lon
-    print response
-    threadDelay 60000000
+startAutoCaching ::
+  ExternalAPIParams ->
+  WeatherOffsets ->
+  [LocationParams] ->
+  Integer ->
+  IO ()
+startAutoCaching
+  apiParams
+  offsets
+  locations
+  period = do
+    forever $ do
+      _ <-
+        liftIO $
+          traverse
+            ( \location ->
+                getFromRemoteAndCacheData
+                  apiParams
+                  location
+                  offsets
+            )
+            locations
+      delay $ secondsToMicroseconds period

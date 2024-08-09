@@ -21,6 +21,7 @@
         packages = with pkgs; [
           stack
           haskell-language-server
+          dhall
           arion
           docker-client
         ];

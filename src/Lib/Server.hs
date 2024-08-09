@@ -17,6 +17,7 @@ import Lib.Internal.Caching.Cache (WeatherResponse)
 import Lib.Internal.DataFetching.DataFetch
 import Lib.Internal.Utils.Concurrency (waitForFirstNonNothingResult)
 import Lib.Internal.Utils.Time (isCurrentTime)
+import Lib.Util
 import Network.Wai
 import Servant
 import Prelude
@@ -41,44 +42,88 @@ invalidParametersError =
     }
 
 getWeatherData ::
-  String ->
-  Double ->
-  Double ->
+  ExternalAPIParams ->
+  WeatherParams ->
+  WeatherOffsets ->
   Int ->
   Handler (Maybe WeatherResponse)
-getWeatherData apiKey latitude longitude time' = do
-  isCurrent <- liftIO $ isCurrentTime time'
-  if isCurrent
-    then
+getWeatherData
+  apiParams
+  params
+  offsets
+  currentTimeOffset = do
+    isCurrent <-
       liftIO $
-        waitForFirstNonNothingResult
-          (getCachedData latitude longitude time')
-          (getFromRemoteAndCacheData apiKey latitude longitude)
-    else
-      liftIO $
-        getCachedData latitude longitude time'
+        isCurrentTime
+          (timestamp params)
+          currentTimeOffset
+    if isCurrent
+      then
+        liftIO $
+          waitForFirstNonNothingResult
+            ( getCachedData
+                params
+                offsets
+            )
+            ( getFromRemoteAndCacheData
+                apiParams
+                (locationParams params)
+                offsets
+            )
+      else
+        liftIO $
+          getCachedData
+            params
+            offsets
 
-server :: String -> Server WeatherAPI
-server apiKey = weather
-  where
-    weather ::
-      Maybe Double ->
-      Maybe Double ->
-      Maybe Int ->
-      Handler WeatherResponse
-    weather (Just latitude) (Just longitude) (Just time') = do
-      res <-
-        getWeatherData
-          apiKey
-          latitude
-          longitude
-          time'
-      maybe (throwError notFoundError) return res
-    weather _ _ _ =
-      throwError invalidParametersError
+server ::
+  ExternalAPIParams ->
+  WeatherOffsets ->
+  Int ->
+  Server WeatherAPI
+server
+  apiParams
+  offsets
+  currentTimeOffset = weather
+    where
+      weather ::
+        Maybe Double ->
+        Maybe Double ->
+        Maybe Int ->
+        Handler WeatherResponse
+      weather (Just latitude') (Just longitude') (Just time') = do
+        res <-
+          getWeatherData
+            apiParams
+            ( WeatherParams
+                { locationParams =
+                    LocationParams
+                      { latitude = latitude',
+                        longitude = longitude'
+                      },
+                  timestamp = time'
+                }
+            )
+            offsets
+            currentTimeOffset
+        maybe (throwError notFoundError) return res
+      weather _ _ _ =
+        throwError invalidParametersError
 
 weatherAPI :: Proxy WeatherAPI
 weatherAPI = Proxy
 
-app :: String -> Application
-app apiKey = serve weatherAPI $ server apiKey
+app ::
+  ExternalAPIParams ->
+  WeatherOffsets ->
+  Int ->
+  Application
+app
+  apiParams
+  offsets
+  currentTimeOffset =
+    serve weatherAPI $
+      server
+        apiParams
+        offsets
+        currentTimeOffset

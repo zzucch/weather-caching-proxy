@@ -12,6 +12,7 @@ import Data.Aeson.Key
 import Data.Proxy
 import GHC.Generics
 import Lib.Internal.Caching.Cache
+import Lib.Util (ExternalAPIParams (..), LocationParams (..))
 import Network.HTTP.Client (Manager)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Servant.API
@@ -79,45 +80,42 @@ forecastDays :: Int
 forecastDays = 1
 
 getWeatherResponseClientM ::
-  Double ->
-  Double ->
+  LocationParams ->
   String ->
   ClientM WeatherResponse
-getWeatherResponseClientM latitude' longitude' apiKey =
+getWeatherResponseClientM locationParams apiKey' =
   client
     externalWeatherAPI
-    (Just latitude')
-    (Just longitude')
+    (Just $ Lib.Util.latitude locationParams)
+    (Just $ Lib.Util.longitude locationParams)
     (Just currentParams)
     (Just windSpeedUnit)
     (Just timeFormat)
     (Just forecastDays)
-    (ifNotEmpty apiKey)
+    (ifNotEmpty apiKey')
 
 apiBaseUrl :: String -> BaseUrl
-apiBaseUrl apiKey =
-  case apiKey of
+apiBaseUrl domainName' =
+  case domainName' of
     "" -> BaseUrl Https "api.open-meteo.com" 443 ""
-    _ -> BaseUrl Https "customer-api.open-meteo.com" 443 ""
+    _ -> BaseUrl Https domainName' 443 ""
 
 createClientEnv :: Manager -> String -> IO ClientEnv
-createClientEnv manager apiKey =
-  return $ mkClientEnv manager (apiBaseUrl apiKey)
+createClientEnv manager domainName' =
+  return $ mkClientEnv manager (apiBaseUrl domainName')
 
 getWeatherResponse ::
-  String ->
-  Double ->
-  Double ->
+  ExternalAPIParams ->
+  LocationParams ->
   IO (Maybe WeatherResponse)
-getWeatherResponse apiKey latitude' longitude' = do
+getWeatherResponse apiParams locationParams = do
   manager <- newTlsManager
-  clientEnv <- createClientEnv manager apiKey
+  clientEnv <- createClientEnv manager $ domainName apiParams
   res <-
     runClientM
       ( getWeatherResponseClientM
-          latitude'
-          longitude'
-          apiKey
+          locationParams
+          (apiKey apiParams)
       )
       clientEnv
   case res of

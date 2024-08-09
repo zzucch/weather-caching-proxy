@@ -7,18 +7,34 @@ where
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (pack)
+import Lib.Util
 
 discretizeByOffset :: Double -> Double -> Int
 discretizeByOffset value offset = floor (value / offset)
 
 discretizeTimestamp :: Int -> Int -> Int
-discretizeTimestamp timestamp interval' = timestamp `div` interval'
+discretizeTimestamp timestamp' offset = timestamp' `div` offset
 
-weatherDataKey :: Double -> Double -> Int -> ByteString
-weatherDataKey latitude' longitude' timestamp =
+weatherDataKey ::
+  WeatherParams ->
+  WeatherOffsets ->
+  ByteString
+weatherDataKey params offsets =
   pack $
-    show (discretizeByOffset latitude' 0.01)
+    show
+      ( discretizeByOffset
+          (latitude $ locationParams params)
+          (latitudeOffset offsets)
+      )
       ++ ":"
-      ++ show (discretizeByOffset longitude' 0.01)
+      ++ show
+        ( discretizeByOffset
+            (longitude $ locationParams params)
+            (longitudeOffset offsets)
+        )
       ++ ":"
-      ++ show (discretizeTimestamp timestamp 300)
+      ++ show
+        ( discretizeTimestamp
+            (timestamp params)
+            (timestampOffset offsets)
+        )
