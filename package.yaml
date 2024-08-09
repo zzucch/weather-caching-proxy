@@ -23,10 +23,11 @@ dependencies:
 - base >= 4.7 && < 5
 - async
 - unbounded-delays
-- time
 - servant
 - servant-server
 - servant-client
+- servant-swagger
+- swagger2
 - http-client
 - http-client-tls
 - wai
@@ -35,9 +36,11 @@ dependencies:
 - aeson
 - dotenv
 - dhall
+- time
 - text
 - vector
 - bytestring
+- lens
 
 ghc-options:
 - -Wall

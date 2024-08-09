@@ -52,9 +52,12 @@ library
     , hedis
     , http-client
     , http-client-tls
+    , lens
     , servant
     , servant-client
     , servant-server
+    , servant-swagger
+    , swagger2
     , text
     , time
     , unbounded-delays
@@ -82,9 +85,12 @@ executable weather-caching-proxy-exe
     , hedis
     , http-client
     , http-client-tls
+    , lens
     , servant
     , servant-client
     , servant-server
+    , servant-swagger
+    , swagger2
     , text
     , time
     , unbounded-delays
@@ -114,9 +120,12 @@ test-suite weather-caching-proxy-test
     , hedis
     , http-client
     , http-client-tls
+    , lens
     , servant
     , servant-client
     , servant-server
+    , servant-swagger
+    , swagger2
     , text
     , time
     , unbounded-delays

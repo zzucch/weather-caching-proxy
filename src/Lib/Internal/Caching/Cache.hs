@@ -11,6 +11,7 @@ where
 
 import Data.Aeson
 import Data.ByteString.Lazy (fromStrict, toStrict)
+import Data.Swagger
 import Database.Redis (Connection, Reply, Status, get, runRedis, set)
 import GHC.Generics (Generic)
 import Lib.Internal.Caching.CacheUtil
@@ -29,6 +30,9 @@ data WeatherResponse = WeatherResponse
 instance FromJSON WeatherResponse
 
 instance ToJSON WeatherResponse
+
+instance ToSchema WeatherResponse where
+  declareNamedSchema = genericDeclareNamedSchema defaultSchemaOptions
 
 data WeatherData = WeatherData
   { time :: Int,
@@ -54,6 +58,9 @@ data WeatherData = WeatherData
 instance FromJSON WeatherData
 
 instance ToJSON WeatherData
+
+instance ToSchema WeatherData where
+  declareNamedSchema = genericDeclareNamedSchema defaultSchemaOptions
 
 addWeatherResponse ::
   Connection ->
@@ -95,7 +102,7 @@ findWeatherResponse
               params
               offsets
 
-      res <- get key
+      res <- Database.Redis.get key
 
       return $ case res of
         Right (Just value) -> decode $ fromStrict value

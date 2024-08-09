@@ -11,8 +11,10 @@ module Lib.Server
   )
 where
 
+import Control.Lens
 import Control.Monad.IO.Class
 import Data.Maybe
+import Data.Swagger
 import Lib.Internal.Caching.Cache (WeatherResponse)
 import Lib.Internal.DataFetching.DataFetch
 import Lib.Internal.Utils.Concurrency (waitForFirstNonNothingResult)
@@ -20,7 +22,15 @@ import Lib.Internal.Utils.Time (isCurrentTime)
 import Lib.Util
 import Network.Wai
 import Servant
+import Servant.Swagger
 import Prelude
+
+swaggerSpec :: Swagger
+swaggerSpec =
+  toSwagger weatherAPI
+    & info . title .~ "Weather API"
+    & info . version .~ "1.0"
+    & info . description ?~ "API for retrieving weather data"
 
 type WeatherAPI =
   "weather"
@@ -28,6 +38,10 @@ type WeatherAPI =
     :> QueryParam "longitude" Double
     :> QueryParam "time" Int
     :> Get '[JSON] WeatherResponse
+
+type SwaggerAPI = "swagger.json" :> Get '[JSON] Swagger
+
+type API = SwaggerAPI :<|> WeatherAPI
 
 notFoundError :: ServerError
 notFoundError =
@@ -76,12 +90,12 @@ getWeatherData
             params
             offsets
 
-server ::
+weatherServer ::
   ExternalAPIParams ->
   WeatherOffsets ->
   Int ->
   Server WeatherAPI
-server
+weatherServer
   apiParams
   offsets
   currentTimeOffset = weather
@@ -110,6 +124,14 @@ server
       weather _ _ _ =
         throwError invalidParametersError
 
+server :: ExternalAPIParams -> WeatherOffsets -> Int -> Server API
+server apiParams offsets currentTimeOffset =
+  return swaggerSpec
+    :<|> weatherServer
+      apiParams
+      offsets
+      currentTimeOffset
+
 weatherAPI :: Proxy WeatherAPI
 weatherAPI = Proxy
 
@@ -122,7 +144,7 @@ app
   apiParams
   offsets
   currentTimeOffset =
-    serve weatherAPI $
+    serve (Proxy :: Proxy API) $
       server
         apiParams
         offsets
